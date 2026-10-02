@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Soccer Ball">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#1c7ed6">
+<meta name="format-detection" content="telephone=no">
+<title>Soccer Ball</title>
+<style>
+:root{--bg:#f2f2f7;color-scheme:light dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#11111b}}
+:root[data-theme="dark"]{--bg:#11111b}
+html,body{height:100%;margin:0;-webkit-text-size-adjust:100%;-webkit-tap-highlight-color:transparent;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;overscroll-behavior:none}
+body{background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;font-family:Arial,sans-serif}
+canvas{height:100%;max-width:100%;aspect-ratio:480/640;touch-action:none;display:block;user-select:none;-webkit-user-select:none}
+[hidden]{display:none!important}
+#menu{position:fixed;top:0;right:0;bottom:0;left:0;background:#1c7ed6;display:flex;align-items:center;justify-content:center;text-align:center;color:#fff;padding:env(safe-area-inset-top,0px) 16px env(safe-area-inset-bottom,0px);box-sizing:border-box}
+#menu h1{margin:4px 0 24px;font-size:40px;letter-spacing:1px}
+#menu .bola{font-size:72px;line-height:1}
+.verde{display:block;width:min(80vw,320px);margin:12px auto;padding:16px;font:bold 22px Arial,sans-serif;color:#fff;background:#2f9e44;border:0;border-radius:14px;box-shadow:0 5px 0 #1e6b30;cursor:pointer}
+.verde:active{transform:translateY(4px);box-shadow:0 1px 0 #1e6b30}
+#msg{min-height:20px;margin:14px auto 0;max-width:320px;font-size:15px;word-break:break-all}
+#bMenu{display:none;position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:8px;width:auto;margin:0;padding:8px 12px;font-size:15px;border-radius:10px;box-shadow:0 3px 0 #1e6b30}
+#menu{overflow:hidden}
+#principal,#sobre{position:relative;z-index:1}
+.nuvem{position:absolute;background:#fff;border-radius:999px;width:110px;height:36px;opacity:.95;pointer-events:none;animation:flutua 14s ease-in-out infinite alternate}
+.nuvem::before,.nuvem::after{content:"";position:absolute;background:#fff;border-radius:50%}
+.nuvem::before{width:50px;height:50px;top:-24px;left:16px}
+.nuvem::after{width:64px;height:64px;top:-32px;right:14px}
+@keyframes flutua{to{transform:translateX(34px)}}
+@media (prefers-reduced-motion:reduce){.nuvem{animation:none}}
+.passa{left:0;animation:passa 26s linear infinite}
+@keyframes passa{from{transform:translateX(-180px)}to{transform:translateX(calc(100vw + 40px))}}
+@media (prefers-reduced-motion:reduce){.passa{animation:none;left:20%}}
+</style>
+</head>
+<body>
+<canvas id="c" width="480" height="640"></canvas>
+<button id="bMenu" class="verde">☰ Menu</button>
+<div id="menu">
+  <span class="nuvem passa" style="top:calc(env(safe-area-inset-top,0px) + 50px);animation-duration:30s;animation-delay:-4s"></span>
+  <span class="nuvem passa" style="top:calc(env(safe-area-inset-top,0px) + 110px);scale:.8;animation-duration:24s;animation-delay:-18s"></span>
+  <span class="nuvem passa" style="top:calc(env(safe-area-inset-top,0px) + 28px);scale:.6;animation-duration:36s;animation-delay:-28s"></span>
+  <span class="nuvem passa" style="bottom:calc(env(safe-area-inset-bottom,0px) + 150px);animation-duration:30s;animation-delay:-8s"></span>
+  <span class="nuvem passa" style="bottom:calc(env(safe-area-inset-bottom,0px) + 90px);scale:.8;animation-duration:24s;animation-delay:-16s"></span>
+  <span class="nuvem passa" style="bottom:calc(env(safe-area-inset-bottom,0px) + 30px);scale:.6;animation-duration:36s;animation-delay:-26s"></span>
+  <div id="principal">
+    <div class="bola">⚽</div>
+    <h1>Soccer Ball</h1>
+    <button id="bJogar" class="verde">Jogar</button>
+    <button id="bSobre" class="verde">Sobre</button>
+    <div id="msg"></div>
+  </div>
+  <div id="sobre" hidden>
+    <h1>Sobre</h1>
+    <p style="font-size:26px;margin:0 0 12px">Criado por Heitor</p>
+    <p style="font-size:20px;margin:0 0 28px">Data de criação: 30/09/2026</p>
+    <button id="bVoltar" class="verde">Voltar</button>
+  </div>
+</div>
+<script>
+const L=480,A=640,R=17,BW=100,BY=A-110,KY=98,BOLA_Y0=KY+84;
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+let barX=L/2,x,y,vx,vy,pontos,jogando,fim=0,ultimo=0,rot=0;
+let fase,espera,kx,ktx,chute,vel,tela='menu';
+
+function proximo(){
+  fase='prep';espera=70;chute=0;
+  ktx=50+Math.random()*(L-100);
+  x=kx;y=BOLA_Y0;vx=0;vy=0;
+}
+function novo(){
+  pontos=0;jogando=true;kx=L/2;confete.length=0;proximo();
+}
+function chutar(){
+  fase='voo';chute=14;
+  vel=Math.min(6+pontos*0.35,12);
+  const alvo=40+Math.random()*(L-80);
+  vy=vel;vx=(alvo-x)/(BY-y)*vy;
+}
+
+function pos(e){
+  const r=cv.getBoundingClientRect();
+  const px=(e.clientX-r.left)*L/r.width;
+  barX=Math.max(BW/2,Math.min(L-BW/2,px));
+}
+cv.addEventListener('pointermove',pos);
+cv.addEventListener('pointerdown',e=>{
+  pos(e);
+  if(tela==='jogo'&&!jogando&&Date.now()-fim>600)novo();
+});
+
+function atualizar(dt){
+  if(fase==='prep'){
+    kx+=(ktx-kx)*Math.min(1,0.1*dt);
+    x=kx;y=BOLA_Y0;
+    espera-=dt;
+    if(espera<=0)chutar();
+    return;
+  }
+  const antes=y+R;
+  x+=vx*dt;y+=vy*dt;rot+=(vx+0.3*vy)*0.04*dt;
+  if(chute>0)chute-=dt;
+  if(x-R<0){x=R;vx=Math.abs(vx)}
+  else if(x+R>L){x=L-R;vx=-Math.abs(vx)}
+  const agora=y+R;
+  if(vy>0&&antes<=BY+4&&agora>=BY&&x>=barX-BW/2-R&&x<=barX+BW/2+R){
+    y=BY-R;
+    vy=-Math.min(9+pontos*0.2,13);
+    vx=Math.max(-5,Math.min(5,(x-barX)/(BW/2)*5));
+    pontos++;
+  }
+  if(vy<0&&y<BOLA_Y0){proximo();return}
+  if(y-R>A){jogando=false;fim=Date.now();criarConfete()}
+}
+
+function texto(t,px,py,tam,cor){
+  ctx.fillStyle=cor;ctx.font='bold '+tam+'px Arial';
+  ctx.textAlign='center';ctx.fillText(t,px,py);
+}
+
+const confete=[];
+const CORES=['#ffd43b','#ff6b6b','#4dabf7','#69db7c','#da77f2','#ffffff','#ff922b'];
+function criarConfete(){
+  confete.length=0;
+  for(let i=0;i<140;i++){
+    confete.push({
+      x:Math.random()*L,y:A+10+Math.random()*30,
+      vx:(Math.random()-0.5)*6,vy:-(14+Math.random()*12),
+      w:6+Math.random()*6,h:8+Math.random()*6,
+      r:Math.random()*6,vr:(Math.random()-0.5)*0.4,
+      cor:CORES[i%CORES.length]
+    });
+  }
+}
+function atualizarConfete(dt){
+  for(let i=confete.length-1;i>=0;i--){
+    const p=confete[i];
+    p.vy+=0.4*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.r+=p.vr*dt;
+    if(p.vy>0&&p.y>A+30)confete.splice(i,1);
+  }
+}
+function desenharConfete(){
+  for(const p of confete){
+    ctx.save();ctx.translate(p.x,p.y);ctx.rotate(p.r);
+    ctx.fillStyle=p.cor;ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+    ctx.restore();
+  }
+}
+
+const campo=document.createElement('canvas');
+campo.width=L;campo.height=A;
+(function(){
+  const c=campo.getContext('2d');
+  for(let i=0;i<10;i++){
+    c.fillStyle=i%2?'#2f9e44':'#37b24d';
+    c.fillRect(0,i*64,L,64);
+  }
+  c.strokeStyle='rgba(255,255,255,.85)';c.lineWidth=3;
+  c.strokeRect(14,14,L-28,A-28);
+  c.beginPath();c.moveTo(14,A/2);c.lineTo(L-14,A/2);c.stroke();
+  c.beginPath();c.arc(L/2,A/2,62,0,Math.PI*2);c.stroke();
+  c.fillStyle='rgba(255,255,255,.85)';
+  c.beginPath();c.arc(L/2,A/2,4,0,Math.PI*2);c.fill();
+  c.strokeRect(L/2-120,14,240,100);c.strokeRect(L/2-60,14,120,40);
+  c.strokeRect(L/2-120,A-114,240,100);c.strokeRect(L/2-60,A-54,120,40);
+  c.lineWidth=5;
+  c.strokeRect(L/2-40,6,80,10);c.strokeRect(L/2-40,A-16,80,10);
+})();
+
+function rosto(cx,t,cabelo){
+  ctx.fillStyle='#ffd8a8';
+  ctx.beginPath();ctx.arc(cx,t+10,10,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle=cabelo;
+  ctx.beginPath();ctx.arc(cx,t+8,10,Math.PI,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#222';
+  ctx.fillRect(cx-5,t+10,2,3);ctx.fillRect(cx+3,t+10,2,3);
+  ctx.strokeStyle='#a0522d';ctx.lineWidth=1.5;
+  ctx.beginPath();ctx.arc(cx,t+13,4,0.2,Math.PI-0.2);ctx.stroke();
+}
+
+function desenharGoleiro(){
+  const cx=barX,t=BY;
+  ctx.fillStyle='rgba(0,0,0,.22)';
+  ctx.beginPath();ctx.ellipse(cx,t+68,30,6,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#1c7ed6';
+  ctx.fillRect(cx-12,t+48,9,14);ctx.fillRect(cx+3,t+48,9,14);
+  ctx.fillStyle='#212529';
+  ctx.fillRect(cx-12,t+62,10,5);ctx.fillRect(cx+2,t+62,10,5);
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(cx-16,t+36,32,13);
+  ctx.fillStyle='#1c7ed6';
+  ctx.fillRect(cx-16,t+12,32,25);
+  ctx.fillRect(cx-BW/2+9,t+2,BW-18,10);
+  rosto(cx,t,'#3b2a1a');
+  texto('1',cx,t+33,17,'#ffffff');
+  ctx.fillStyle='#51cf66';ctx.strokeStyle='#2b8a3e';ctx.lineWidth=1.5;
+  for(const gx of [cx-BW/2+9,cx+BW/2-9]){
+    ctx.beginPath();ctx.arc(gx,t+9,9,0,Math.PI*2);ctx.fill();ctx.stroke();
+  }
+}
+
+function listras(px,py,w,h,e){
+  for(let i=0;i*e<w;i++){
+    ctx.fillStyle=i%2?'#212529':'#ffffff';
+    ctx.fillRect(px+i*e,py,Math.min(e,w-i*e),h);
+  }
+}
+function numero(n,px,py){
+  ctx.font='bold 17px Arial';ctx.textAlign='center';
+  ctx.lineJoin='round';ctx.lineWidth=3.5;ctx.strokeStyle='#000';
+  ctx.strokeText(n,px,py);
+  ctx.fillStyle='#fff';ctx.fillText(n,px,py);
+}
+
+function desenharJogador(){
+  const cx=kx,t=KY;
+  let ang=0;
+  if(fase==='prep'&&espera<25)ang=-0.8;
+  else if(fase==='voo'&&chute>0)ang=0.9;
+  ctx.fillStyle='rgba(0,0,0,.22)';
+  ctx.beginPath();ctx.ellipse(cx,t+70,28,6,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle='#212529';
+  ctx.fillRect(cx-12,t+46,9,16);
+  ctx.fillStyle='#ff69b4';ctx.fillRect(cx-13,t+60,11,5);
+  ctx.save();
+  ctx.translate(cx+8,t+44);ctx.rotate(ang);
+  ctx.fillStyle='#212529';ctx.fillRect(-4,2,9,16);
+  ctx.fillStyle='#ff69b4';ctx.fillRect(-5,16,11,5);
+  ctx.restore();
+  ctx.fillStyle='#ffffff';ctx.fillRect(cx-16,t+34,32,13);
+  listras(cx-16,t+12,32,23,4);
+  listras(cx-26,t+14,10,18,5);listras(cx+16,t+14,10,18,5);
+  ctx.fillStyle='#ffd8a8';
+  ctx.beginPath();ctx.arc(cx-21,t+35,5,0,Math.PI*2);ctx.fill();
+  ctx.beginPath();ctx.arc(cx+21,t+35,5,0,Math.PI*2);ctx.fill();
+  rosto(cx,t-4,'#d4a017');
+  numero('7',cx,t+31);
+}
+
+function desenharBola(){
+  ctx.save();
+  ctx.translate(x,y);ctx.rotate(rot);
+  ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);
+  ctx.fillStyle='#fff';ctx.fill();
+  ctx.save();ctx.clip();
+  ctx.fillStyle='#222';ctx.strokeStyle='#222';ctx.lineWidth=1.2;
+  for(let i=0;i<5;i++){
+    const a=i*2*Math.PI/5-Math.PI/2+Math.PI/5;
+    ctx.beginPath();
+    ctx.arc(Math.cos(a)*R*1.02,Math.sin(a)*R*1.02,R*0.3,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.beginPath();
+  for(let i=0;i<5;i++){
+    const a=i*2*Math.PI/5-Math.PI/2;
+    const px=Math.cos(a)*R*0.42,py=Math.sin(a)*R*0.42;
+    i?ctx.lineTo(px,py):ctx.moveTo(px,py);
+  }
+  ctx.closePath();ctx.fill();
+  for(let i=0;i<5;i++){
+    const a=i*2*Math.PI/5-Math.PI/2;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a)*R*0.42,Math.sin(a)*R*0.42);
+    ctx.lineTo(Math.cos(a)*R*0.8,Math.sin(a)*R*0.8);
+    ctx.stroke();
+  }
+  ctx.restore();
+  ctx.beginPath();ctx.arc(0,0,R,0,Math.PI*2);
+  ctx.strokeStyle='#222';ctx.lineWidth=1.5;ctx.stroke();
+  ctx.restore();
+}
+
+function desenhar(){
+  ctx.drawImage(campo,0,0);
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(0,0,L,60);
+  texto('Pontos: '+pontos,L/2,40,24,'#ffffff');
+  desenharJogador();
+  ctx.fillStyle='rgba(0,0,0,.25)';
+  ctx.beginPath();ctx.ellipse(x+3,y+R+2,R*0.8,R*0.3,0,0,Math.PI*2);ctx.fill();
+  desenharBola();
+  desenharGoleiro();
+  if(!jogando){
+    ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,L,A);
+    texto('GOOOOOOL!',L/2,A/2-20,52+5*Math.sin((Date.now()-fim)/120),'#ffd43b');
+    texto('Pontos: '+pontos,L/2,A/2+25,22,'#ffffff');
+    texto('Toque na tela para jogar de novo',L/2,A/2+65,15,'#a6adc8');
+  }
+  desenharConfete();
+}
+
+function loop(t){
+  const dt=Math.min((t-ultimo)/16.67||1,3);
+  ultimo=t;
+  if(jogando&&tela==='jogo')atualizar(dt);
+  atualizarConfete(dt);
+  desenhar();
+  requestAnimationFrame(loop);
+}
+const $=id=>document.getElementById(id);
+function mostrarMenu(){
+  tela='menu';
+  $('menu').style.display='flex';
+  $('principal').hidden=false;$('sobre').hidden=true;
+  $('msg').textContent='';
+  $('bMenu').style.display='none';
+}
+$('bJogar').onclick=()=>{
+  novo();tela='jogo';
+  $('menu').style.display='none';
+  $('bMenu').style.display='block';
+};
+$('bSobre').onclick=()=>{$('principal').hidden=true;$('sobre').hidden=false};
+$('bVoltar').onclick=()=>{$('sobre').hidden=true;$('principal').hidden=false};
+$('bMenu').onclick=mostrarMenu;
+novo();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
