@@ -1,2 +1,2 @@
 # soccer-ball
-Jogo de futebol - Para Goleiros, trene seu reflexo
+Jogo de futebol - Para Goleiros, treine seu reflexo
